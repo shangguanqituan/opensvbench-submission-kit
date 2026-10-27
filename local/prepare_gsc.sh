@@ -6,12 +6,30 @@
 # - Include WORD in utt_id for better readability (e.g., SPK_WORD_INDEX)
 
 data=data
-max_utts=10000   # set to 0 to disable subsampling
-. tools/parse_options.sh || exit 1
+max_utts=10000
+legacy_random=false
+KIT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "${KIT_ROOT}/tools/parse_options.sh" || exit 1
 
 data=$(realpath "${data}")
 rawdata_dir=${data}/gsc/raw_data
 prep_dir=${data}/gsc/prepared
+canonical_dir=${KIT_ROOT}/resources/canonical/gsc
+
+case "${legacy_random}" in
+    1|true|TRUE|yes|YES)
+        legacy_random=true
+        ;;
+    *)
+        legacy_random=false
+        ;;
+esac
+
+if [ "${legacy_random}" = false ] && [ "${max_utts}" -ne 10000 ]; then
+    echo "[GSC] Canonical mode requires --max-utts 10000."
+    echo "[GSC] Use --legacy-random true for a custom experimental subset."
+    exit 2
+fi
 
 mkdir -p "${prep_dir}"
 
@@ -43,6 +61,23 @@ if [ -d "${rawdata_dir}/zero" ] && [ ! -d "${rawdata_dir}/zero/zero" ]; then
 else
     echo "[GSC] Structure seems already organized. Skipping reorganization."
 fi
+
+if [ "${legacy_random}" = false ]; then
+    if [ ! -f "${canonical_dir}/manifest.tsv" ] || [ ! -f "${canonical_dir}/trials_short.txt" ]; then
+        echo "[GSC] ERROR: Missing frozen canonical manifest/trials in ${canonical_dir}"
+        exit 2
+    fi
+    echo "[GSC] Applying frozen canonical manifest and trials..."
+    python3 "${KIT_ROOT}/tools/apply_canonical_gsc.py" \
+        --manifest "${canonical_dir}/manifest.tsv" \
+        --trials "${canonical_dir}/trials_short.txt" \
+        --raw-dir "${rawdata_dir}" \
+        --prep-dir "${prep_dir}"
+    echo "=== [GSC] Preparation Done (canonical). ==="
+    exit 0
+fi
+
+echo "[GSC] WARNING: using legacy random GSC preparation; output is not the core canonical protocol."
 
 # -------------------------------------------------------------
 # 2. Generate Metadata (Test Split Only) with Semantic Utt-ID
@@ -153,7 +188,7 @@ fi
 # -------------------------------------------------------------
 if [ "${max_utts}" -gt 0 ] && [ "$(wc -l < ${wav_scp})" -gt "${max_utts}" ]; then
   echo "[GSC] Subsampling to ${max_utts} utterances..."
-  python3 tools/subsample_wavscp.py \
+  python3 "${KIT_ROOT}/tools/subsample_wavscp.py" \
     --wav-scp  "${wav_scp}" \
     --utt2spk  "${utt2spk}" \
     --max-utts "${max_utts}" \
@@ -167,7 +202,7 @@ fi
 # -------------------------------------------------------------
 echo "[GSC] Generating Trials using tools/make_trials_gsc.py ..."
 
-python3 tools/make_trials_gsc.py \
+python3 "${KIT_ROOT}/tools/make_trials_gsc.py" \
     --utt2spk           "${utt2spk}" \
     --utt2text          "${utt2text}" \
     --out-short         "${prep_dir}/trials_short.txt" \

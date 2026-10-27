@@ -47,6 +47,10 @@ placing the files, run this step again.
 ```
 
 The scripts write manifests, prepared audio, and trial files below `DATA_ROOT`.
+For GSC, the default preparation applies the committed canonical manifest and
+trial file; it does not randomly select utterances or regenerate the trial list.
+The pinned source and resource hashes are documented in
+`resources/canonical/gsc/README.md`.
 
 ## 5. Check the trials
 

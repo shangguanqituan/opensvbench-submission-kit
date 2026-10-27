@@ -17,6 +17,7 @@ echo "=== [GSC] Downloading archives to: ${download_dir} ==="
 # GSC v0.02 URL
 url="http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
 archive=${download_dir}/speech_commands_v0.02.tar.gz
+expected_archive_sha256=af14739ee7dc311471de98f5f9d2c9191b18aedfe957f4a6ff791c709868ff58
 
 if [ ! -f "${archive}" ]; then
   echo "[GSC] Downloading speech_commands_v0.02.tar.gz ..."
@@ -25,6 +26,15 @@ if [ ! -f "${archive}" ]; then
 else
   echo "[GSC] Found ${archive}, skip download."
 fi
+
+actual_archive_sha256=$(sha256sum "${archive}" | awk '{print $1}')
+if [ "${actual_archive_sha256}" != "${expected_archive_sha256}" ]; then
+  echo "[GSC] ERROR: speech_commands_v0.02.tar.gz checksum mismatch."
+  echo "  expected: ${expected_archive_sha256}"
+  echo "  actual:   ${actual_archive_sha256}"
+  exit 2
+fi
+echo "[GSC] Verified archive SHA-256: ${actual_archive_sha256}"
 
 echo "=== [GSC] Extracting archives to: ${rawdata_dir} ==="
 
